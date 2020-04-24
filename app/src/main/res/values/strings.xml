@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ContactTracer</string>
+    <string name="scan_start">START SCAN</string>
+    <string name="scan_stop">STOP SCAN</string>
+</resources>
