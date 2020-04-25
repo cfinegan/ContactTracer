@@ -23,6 +23,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -157,6 +158,24 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    public void onShowAllClick(MenuItem item) {
+        if (!contacts.isEmpty()) {
+            Toast.makeText(context, "TODO: Map Activity", Toast.LENGTH_SHORT).show();
+            int size = contacts.size();
+            double[] lats = new double[size];
+            double[] lngs = new double[size];
+            for (int i = 0;  i < size; ++i) {
+                Contact contact = contacts.get(i);
+                lats[i] = contact.location.getLatitude();
+                lngs[i] = contact.location.getLongitude();
+            }
+            Intent intent = new Intent(this, MapActivity.class);
+            intent.putExtra("lats", lats);
+            intent.putExtra("lngs", lngs);
+            startActivity(intent);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -212,6 +231,11 @@ public class MainActivity extends AppCompatActivity
 
         // Initialize GPS.
         locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        assert locationManager != null;
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Intent enable = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            startActivity(enable);
+        }
     }
 
     @Override

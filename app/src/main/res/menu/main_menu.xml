@@ -5,4 +5,9 @@
         android:title="@string/delete_all"
         android:titleCondensed="@string/delete_all_short"
         android:onClick="onDeleteAllClick" />
+    <item
+        android:id="@+id/show_all"
+        android:title="@string/show_all"
+        android:titleCondensed="@string/show_all_short"
+        android:onClick="onShowAllClick" />
 </menu>

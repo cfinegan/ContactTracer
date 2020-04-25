@@ -4,4 +4,6 @@
     <string name="scan_stop">STOP SCAN</string>
     <string name="delete_all">Remove all records</string>
     <string name="delete_all_short">Remove all</string>
+    <string name="show_all">Show all contacts</string>
+    <string name="show_all_short">Show all</string>
 </resources>
