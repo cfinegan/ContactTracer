@@ -34,6 +34,10 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -52,7 +56,7 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<ScanFilter> filters = new ArrayList<>();
     private ScanSettings settings;
     private BluetoothLeScanner scanner;
-    private LocationManager locationManager;
+    private FusedLocationProviderClient fusedLocationClient;
     private ArrayAdapter<Contact> arrayAdapter;
 
     private ScanCallback leScanCallback = new ScanCallback() {
@@ -60,16 +64,20 @@ public class MainActivity extends AppCompatActivity
         public void onScanResult(int callbackType, ScanResult result) {
             final String TAG = "onScanResult";
             BluetoothDevice device = result.getDevice();
-            String address = device.getAddress();
+            final String address = device.getAddress();
             if (!prevContacts.contains(address)) {
-                String name = device.getName();
-                Date now = Calendar.getInstance().getTime();
-                @SuppressLint("MissingPermission")
-                Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                contacts.add(new Contact(name, address, now, loc));
-                prevContacts.add(address);
-                Log.d(TAG, (name == null ? "null" : name) + "," + address);
-                arrayAdapter.notifyDataSetChanged();
+                final String name = device.getName();
+                final Date now = Calendar.getInstance().getTime();
+                fusedLocationClient.getLastLocation()
+                        .addOnSuccessListener(new OnSuccessListener<Location>() {
+                            @Override
+                            public void onSuccess(Location loc) {
+                                contacts.add(new Contact(name, address, now, loc));
+                                prevContacts.add(address);
+                                Log.d(TAG, (name == null ? "null" : name) + "," + address);
+                                arrayAdapter.notifyDataSetChanged();
+                            }
+                        });
             }
         }
 
@@ -112,7 +120,7 @@ public class MainActivity extends AppCompatActivity
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
         final int pos = position;
         String message = contacts.get(position).toString()
-                + "\n\nAre you sure you want to delete this record?";
+                + "\n\nAre you sure you want to delete this contact?";
         new AlertDialog.Builder(this)
                 .setTitle(R.string.app_name)
                 .setMessage(message)
@@ -209,6 +217,7 @@ public class MainActivity extends AppCompatActivity
         for (String p : perms) {
             if (ContextCompat.checkSelfPermission(context, p) != PackageManager.PERMISSION_GRANTED) {
                 needPerms = true;
+                break;
             }
         }
         if (needPerms) {
@@ -230,12 +239,28 @@ public class MainActivity extends AppCompatActivity
         scanner = bluetoothAdapter.getBluetoothLeScanner();
 
         // Initialize GPS.
-        locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        LocationManager locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
         assert locationManager != null;
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Intent enable = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-            startActivity(enable);
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.app_name)
+                    .setMessage("Location services must be enabled to use this application")
+                    .setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            Intent enable = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                            startActivity(enable);
+                        }
+                    })
+                    .setNegativeButton("Close", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).create().show();
         }
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
     }
 
     @Override
