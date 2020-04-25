@@ -19,9 +19,10 @@ public class Contact {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(name == null ? "Unknown Device" : name);
-        sb.append("    {");
+        sb.append("  {");
         sb.append(address);
-        sb.append('}');
+        sb.append("}\n");
+        sb.append(accessTime.toString());
         return sb.toString();
     }
 }

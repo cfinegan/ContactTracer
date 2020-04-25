@@ -24,6 +24,8 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -59,7 +61,6 @@ public class MainActivity extends AppCompatActivity
             BluetoothDevice device = result.getDevice();
             String address = device.getAddress();
             if (!prevContacts.contains(address)) {
-                //Toast.makeText(context, "Device found!", Toast.LENGTH_SHORT).show();
                 String name = device.getName();
                 Date now = Calendar.getInstance().getTime();
                 @SuppressLint("MissingPermission")
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onScanFailed(int errorCode) {
-            Toast.makeText(context, "Scan failure!", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "Scan failure!", Toast.LENGTH_SHORT).show();
             Log.e("scanCallback", "BLE scan failed with code: " + errorCode);
         }
     };
@@ -95,7 +96,6 @@ public class MainActivity extends AppCompatActivity
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         Contact contact = contacts.get(position);
         Location loc = contact.location;
-
         @SuppressLint("DefaultLocale")
         String geoString = String.format("geo:%f,%f?z=21", loc.getLatitude(), loc.getLongitude());
         Intent maps = new Intent(Intent.ACTION_VIEW, Uri.parse(geoString));
@@ -110,9 +110,11 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
         final int pos = position;
-        AlertDialog alert = new AlertDialog.Builder(this)
+        String message = contacts.get(position).toString()
+                + "\n\nAre you sure you want to delete this record?";
+        new AlertDialog.Builder(this)
                 .setTitle(R.string.app_name)
-                .setMessage("Are you sure you want to delete this record?")
+                .setMessage(message)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -128,9 +130,31 @@ public class MainActivity extends AppCompatActivity
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
                     }
-                }).create();
-        alert.show();
+                }).create().show();
         return true;
+    }
+
+    public void onDeleteAllClick(MenuItem item) {
+        if (!contacts.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.app_name)
+                    .setMessage("Are you sure you want to remove all records?")
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            contacts.clear();
+                            prevContacts.clear();
+                            arrayAdapter.notifyDataSetChanged();
+                            dialog.dismiss();
+                        }
+                    })
+                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    }).create().show();
+        }
     }
 
     @Override
@@ -140,22 +164,24 @@ public class MainActivity extends AppCompatActivity
 
         context = getApplicationContext();
 
+        // Initialize list view to reflects contents of 'contacts' member variable.
         ListView contactView = findViewById(R.id.contactView);
         arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_list_item_1, contacts);
         contactView.setAdapter(arrayAdapter);
         contactView.setOnItemClickListener(this);
         contactView.setOnItemLongClickListener(this);
 
+        // Make sure we aren't missing necessary platform features.
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(context, "Bluetooth LE feature not found", Toast.LENGTH_LONG).show();
             finish();
         }
-
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)) {
             Toast.makeText(context, "Location GPS feature not found", Toast.LENGTH_LONG).show();
             finish();
         }
 
+        // Make sure we have all the permissions we need.
         String[] perms = new String[]{
                 Manifest.permission.BLUETOOTH,
                 Manifest.permission.BLUETOOTH_ADMIN,
@@ -170,25 +196,27 @@ public class MainActivity extends AppCompatActivity
             ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
         }
 
+        // Initialize Bluetooth.
         final BluetoothManager btm = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
         assert btm != null;
         BluetoothAdapter bluetoothAdapter = btm.getAdapter();
         assert bluetoothAdapter != null;
-
         if (!bluetoothAdapter.isEnabled()) {
             Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enable, REQUEST_ENABLE_BT);
         }
-
         settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                //.setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
                 .build();
-
         scanner = bluetoothAdapter.getBluetoothLeScanner();
 
+        // Initialize GPS.
         locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+    }
 
-        Log.d("__ON_CREATE__", "hello world");
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
     }
 }
