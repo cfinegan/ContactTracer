@@ -1,7 +1,5 @@
 package com.example.contacttracer;
 
-import android.location.Location;
-
 import java.util.Date;
 
 public class Contact {
