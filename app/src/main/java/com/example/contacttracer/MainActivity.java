@@ -34,22 +34,28 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
 
+    private static final String FILE_TAG = "save/load";
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int REQUEST_PERMISSIONS = 2;
 
-    private ArrayList<Contact> contacts = new ArrayList<>();
+    private List<Contact> contacts;
     private HashSet<String> prevContacts = new HashSet<>();
     private boolean scanning = false;
     private Context context;
@@ -72,7 +78,9 @@ public class MainActivity extends AppCompatActivity
                         .addOnSuccessListener(new OnSuccessListener<Location>() {
                             @Override
                             public void onSuccess(Location loc) {
-                                contacts.add(new Contact(name, address, now, loc));
+                                double lat = loc.getLatitude();
+                                double lng = loc.getLongitude();
+                                contacts.add(new Contact(name, address, now, lat, lng));
                                 prevContacts.add(address);
                                 Log.d(TAG, (name == null ? "null" : name) + "," + address);
                                 arrayAdapter.notifyDataSetChanged();
@@ -104,9 +112,10 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         Contact contact = contacts.get(position);
-        Location loc = contact.location;
+        double lat = contact.getLatitude();
+        double lng = contact.getLongitude();
         @SuppressLint("DefaultLocale")
-        String geoString = String.format("geo:%f,%f?z=21", loc.getLatitude(), loc.getLongitude());
+        String geoString = String.format("geo:%f,%f?z=21", lat, lng);
         Intent maps = new Intent(Intent.ACTION_VIEW, Uri.parse(geoString));
         maps.setPackage("com.google.android.apps.maps");
         if (maps.resolveActivity(getPackageManager()) != null) {
@@ -129,7 +138,7 @@ public class MainActivity extends AppCompatActivity
                     public void onClick(DialogInterface dialog, int which) {
                         Contact contact = contacts.get(pos);
                         contacts.remove(pos);
-                        prevContacts.remove(contact.address);
+                        prevContacts.remove(contact.getAddress());
                         arrayAdapter.notifyDataSetChanged();
                         dialog.dismiss();
                     }
@@ -174,12 +183,12 @@ public class MainActivity extends AppCompatActivity
             double[] lngs = new double[size];
             for (int i = 0;  i < size; ++i) {
                 Contact contact = contacts.get(i);
-                lats[i] = contact.location.getLatitude();
-                lngs[i] = contact.location.getLongitude();
+                lats[i] = contact.getLatitude();
+                lngs[i] = contact.getLongitude();
             }
             Intent intent = new Intent(this, MapActivity.class);
-            intent.putExtra("lats", lats);
-            intent.putExtra("lngs", lngs);
+            intent.putExtra(MapActivity.ARG_LATS, lats);
+            intent.putExtra(MapActivity.ARG_LNGS, lngs);
             startActivity(intent);
         }
     }
@@ -190,6 +199,22 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         context = getApplicationContext();
+
+        // Load previous contacts from storage.
+        File storage = new File(getFilesDir(), "contacts");
+        if (storage.exists()) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                Contact[] ctcList = mapper.readValue(storage, Contact[].class);
+                contacts = new ArrayList<>(Arrays.asList(ctcList));
+            } catch (IOException e) {
+                Toast.makeText(context, "Couldn't load contacts", Toast.LENGTH_SHORT).show();
+                Log.e(FILE_TAG, "Couldn't load contacts", e);
+                contacts = new ArrayList<>();
+            }
+        } else {
+            contacts = new ArrayList<>();
+        }
 
         // Initialize list view to reflects contents of 'contacts' member variable.
         ListView contactView = findViewById(R.id.contactView);
@@ -261,6 +286,19 @@ public class MainActivity extends AppCompatActivity
                     }).create().show();
         }
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        File storage = new File(getFilesDir(), "contacts");
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            mapper.writeValue(storage, contacts.toArray());
+        } catch (IOException e) {
+            Toast.makeText(context, "Couldn't save contacts", Toast.LENGTH_SHORT).show();
+            Log.e(FILE_TAG, "Couldn't save contacts", e);
+        }
     }
 
     @Override

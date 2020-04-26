@@ -5,16 +5,32 @@ import android.location.Location;
 import java.util.Date;
 
 public class Contact {
-    public String name;
-    public String address;
-    public Date accessTime;
-    public Location location;
-    public Contact(String name, String address, Date accessTime, Location location) {
+    private String name;
+    private String address;
+    private Date accessTime;
+    private double latitude;
+    private double longitude;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public Date getAccessTime() { return accessTime; }
+    public void setAccessTime(Date accessTime) { this.accessTime = accessTime; }
+    public double getLatitude() { return latitude; }
+    public void setLatitude(double latitude) { this.latitude = latitude; }
+    public double getLongitude() { return longitude; }
+    public void setLongitude(double longitude) { this.longitude = longitude; }
+
+    public Contact() {}
+    public Contact(String name, String address, Date accessTime, double latitude, double longitude) {
         this.name = name;
         this.address = address;
         this.accessTime = accessTime;
-        this.location = location;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
